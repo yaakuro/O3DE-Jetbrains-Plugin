@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Copyright (c) 2026 Cengiz Terzibas
+  SPDX-License-Identifier: Apache-2.0 OR MIT
+-->
+<idea-plugin>
+  <id>com.o3de.clion</id>
+  <name>O3DE</name>
+  <vendor>O3DE</vendor>
+  <description><![CDATA[
+    <p>Drive the Open 3D Engine (<code>o3de</code>) command line tool from CLion.</p>
+    <p>The plugin wraps the engine's <code>o3de.sh</code> / <code>o3de.bat</code> script so that
+    gems, projects, components and template instances can be created, registered and enabled
+    without leaving the IDE:</p>
+    <ul>
+      <li>Create a gem, a project or a component from any registered template</li>
+      <li>Instantiate arbitrary templates with custom <code>${token}</code> replacements</li>
+      <li>Register engines, projects, gems, templates and external folders</li>
+      <li>Enable a gem in a project</li>
+      <li>Run any other <code>o3de</code> sub command with full control over its arguments</li>
+    </ul>
+    <p>Every invocation is shown in the <b>O3DE</b> tool window together with its exit code, and
+    a registry tab lists everything currently present in <code>~/.o3de/o3de_manifest.json</code>.</p>
+    <p>Configure the script location under <b>Settings | Tools | O3DE</b>. When left empty the
+    plugin looks for the engines registered in the O3DE manifest.</p>
+  ]]></description>
+  <idea-version since-build="261"/>
+  <depends>com.intellij.modules.platform</depends>
+  <depends>com.intellij.modules.clion</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <applicationConfigurable groupId="tools"
+                             id="com.o3de.clion.settings"
+                             displayName="O3DE"
+                             instance="com.o3de.clion.settings.O3deConfigurable"/>
+    <notificationGroup id="O3DE" displayType="BALLOON" isLogByDefault="true"/>
+    <completion.contributor language="any"
+                            implementationClass="com.o3de.clion.lua.LuaCompletionContributor"/>
+    <typedHandler implementation="com.o3de.clion.lua.LuaTypedHandler"/>
+    <toolWindow id="O3DE"
+                anchor="bottom"
+                icon="com.o3de.clion.O3deIcons.ToolWindow"
+                factoryClass="com.o3de.clion.toolwindow.O3deToolWindowFactory"/>
+  </extensions>
+
+  <actions>
+    <group id="O3de.ToolMenu" text="O3DE" popup="true" icon="com.o3de.clion.O3deIcons.ToolWindow">
+      <add-to-group group-id="ToolsMenu" anchor="last"/>
+
+      <action id="O3de.CreateGem" class="com.o3de.clion.actions.CreateGemAction"/>
+      <action id="O3de.CreateProject" class="com.o3de.clion.actions.CreateProjectAction"/>
+      <action id="O3de.CreateComponent" class="com.o3de.clion.actions.CreateComponentAction"/>
+      <action id="O3de.InstantiateTemplate" class="com.o3de.clion.actions.InstantiateTemplateAction"/>
+
+      <separator/>
+
+      <group id="O3de.RegisterMenu" text="Register" popup="true">
+        <action id="O3de.RegisterEngine" class="com.o3de.clion.actions.RegisterEngineAction"/>
+        <action id="O3de.RegisterProject" class="com.o3de.clion.actions.RegisterProjectAction"/>
+        <action id="O3de.RegisterGem" class="com.o3de.clion.actions.RegisterGemAction"/>
+        <action id="O3de.RegisterTemplate" class="com.o3de.clion.actions.RegisterTemplateAction"/>
+        <action id="O3de.RegisterFolder" class="com.o3de.clion.actions.RegisterFolderAction"/>
+      </group>
+      <action id="O3de.EnableGem" class="com.o3de.clion.actions.EnableGemAction"/>
+
+      <separator/>
+
+      <action id="O3de.ShowRegistration" class="com.o3de.clion.actions.ShowRegistrationAction"/>
+      <action id="O3de.RunCommand" class="com.o3de.clion.actions.RunCommandAction"/>
+
+      <separator/>
+
+      <action id="O3de.OpenSettings" class="com.o3de.clion.actions.OpenSettingsAction"/>
+    </group>
+
+    <group id="O3de.ProjectViewMenu" text="O3DE" popup="true" icon="com.o3de.clion.O3deIcons.ToolWindow">
+      <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+
+      <reference ref="O3de.CreateComponent"/>
+      <reference ref="O3de.InstantiateTemplate"/>
+
+      <separator/>
+
+      <reference ref="O3de.CreateGem"/>
+      <reference ref="O3de.CreateProject"/>
+      <reference ref="O3de.EnableGem"/>
+
+      <separator/>
+
+      <reference ref="O3de.RegisterGem"/>
+      <reference ref="O3de.RegisterFolder"/>
+
+      <separator/>
+
+      <reference ref="O3de.RunCommand"/>
+      <reference ref="O3de.ShowRegistration"/>
+    </group>
+  </actions>
+</idea-plugin>

@@ -1,0 +1,199 @@
+import groovy.json.JsonSlurper
+
+import java.util.concurrent.TimeUnit
+
+plugins {
+    id 'java'
+    id 'org.jetbrains.intellij' version '1.17.4'
+}
+
+group = 'com.o3de.clion'
+version = '1.0.0'
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+// ---------------------------------------------------------------------------
+// Locating a CLion installation to build against
+//
+// The platform comes from a local CLion instead of being downloaded, which
+// keeps builds fast and lets them run without network access. Pin an
+// installation with -PclionPath=... or the O3DE_CLION_PATH environment variable.
+// ---------------------------------------------------------------------------
+
+def productInfoOf(File ideRoot) {
+    def info = new File(ideRoot, 'product-info.json')
+    if (!info.isFile()) {
+        return null
+    }
+    try {
+        def json = new JsonSlurper().parse(info)
+        return [code: json.productCode?.toString(), build: json.buildNumber?.toString()]
+    } catch (Exception ignored) {
+        return null
+    }
+}
+
+def explicitRoots = [] as LinkedHashSet<File>
+if (project.hasProperty('clionPath')) {
+    explicitRoots << file(project.property('clionPath'))
+}
+if (System.getenv('O3DE_CLION_PATH')) {
+    explicitRoots << file(System.getenv('O3DE_CLION_PATH'))
+}
+explicitRoots = explicitRoots.findAll { it.isDirectory() }
+
+def scanRoots = [
+        new File(System.getProperty('user.home'), '.local/share/JetBrains/Toolbox/apps'),
+        new File(System.getProperty('user.home'), 'Library/Application Support/JetBrains/Toolbox/apps'),
+        new File(System.getProperty('user.home'), 'AppData/Local/JetBrains/Toolbox/apps'),
+        new File('/opt'),
+        new File('/usr/local'),
+]
+
+def discoveredRoots = [] as LinkedHashSet<File>
+for (File scanRoot : scanRoots) {
+    if (!scanRoot.isDirectory()) {
+        continue
+    }
+    def queue = new ArrayDeque<File>()
+    queue.add(scanRoot)
+    for (int depth = 0; depth < 4 && !queue.isEmpty(); depth++) {
+        int levelSize = queue.size()
+        for (int i = 0; i < levelSize; i++) {
+            File dir = queue.removeFirst()
+            if (new File(dir, 'product-info.json').isFile()) {
+                discoveredRoots << dir
+                continue
+            }
+            File[] children = dir.listFiles()
+            if (children == null) {
+                continue
+            }
+            for (File child : children) {
+                if (child.isDirectory() && !child.name.startsWith('.')) {
+                    queue.addLast(child)
+                }
+            }
+        }
+    }
+}
+
+def clionRoots = new ArrayList<File>(explicitRoots)
+clionRoots.addAll(discoveredRoots.findAll { productInfoOf(it)?.code == 'CL' })
+clionRoots = clionRoots.unique()
+clionRoots.sort { a, b ->
+    def buildA = productInfoOf(a)?.build ?: ''
+    def buildB = productInfoOf(b)?.build ?: ''
+    return buildA.compareTo(buildB)
+}
+
+if (clionRoots.isEmpty()) {
+    throw new GradleException(
+            'No CLion installation found. Set -PclionPath=/path/to/clion or O3DE_CLION_PATH.')
+}
+def clionRoot = clionRoots.last()
+
+// ---------------------------------------------------------------------------
+// Locating a javac that understands the platform bytecode
+//
+// Recent CLion builds ship class files newer than most JDKs on the machine.
+// CLion bundles a JBR whose javac always matches, so prefer it and otherwise
+// use the newest javac we can find.
+// ---------------------------------------------------------------------------
+
+def javacMajor(File javaHome) {
+    def javac = new File(javaHome, 'bin/javac')
+    if (!javac.isFile()) {
+        return -1
+    }
+    try {
+        def process = new ProcessBuilder(javac.absolutePath, '-version')
+                .redirectErrorStream(true)
+                .start()
+        def output = process.inputStream.text.trim()
+        process.waitFor(20, TimeUnit.SECONDS)
+        def matcher = (output =~ /javac\s+(\d+)(?:\.\d+)?/)
+        if (!matcher.find()) {
+            return -1
+        }
+        return matcher.group(1) as int
+    } catch (Exception ignored) {
+        return -1
+    }
+}
+
+def javaHomes = new LinkedHashSet<File>()
+javaHomes.add(new File(clionRoot, 'jbr'))
+def jdksDir = new File(System.getProperty('user.home'), '.jdks')
+if (jdksDir.isDirectory()) {
+    jdksDir.listFiles().findAll { it.isDirectory() }.each { javaHomes.add(it) }
+}
+def systemJvmDir = new File('/usr/lib/jvm')
+if (systemJvmDir.isDirectory()) {
+    systemJvmDir.listFiles().findAll { it.isDirectory() }.each { javaHomes.add(it) }
+}
+if (System.getenv('JAVA_HOME')) {
+    javaHomes.add(file(System.getenv('JAVA_HOME')))
+}
+
+def bestHome = null
+def bestMajor = -1
+for (File candidate : javaHomes) {
+    def major = javacMajor(candidate)
+    if (major > bestMajor) {
+        bestMajor = major
+        bestHome = candidate
+    }
+}
+def forkedJavac = (bestHome != null && bestMajor >= 17) ? bestHome : null
+
+// ---------------------------------------------------------------------------
+
+intellij {
+    localPath = clionRoot.absolutePath
+    type = 'CL'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    if (forkedJavac != null) {
+        options.fork = true
+        options.forkOptions.javaHome = forkedJavac
+        options.compilerArgs += ['--release', '17']
+    }
+}
+
+tasks {
+    patchPluginXml {
+        sinceBuild = '261'
+        // An empty value drops the until-build constraint, so the plugin keeps
+        // loading on future CLion releases.
+        untilBuild = ''
+    }
+
+    buildSearchableOptions {
+        enabled = false
+    }
+
+    // Instrumentation downloads the IntelliJ ant tasks from the network.
+    instrumentCode {
+        enabled = false
+    }
+    instrumentTestCode {
+        enabled = false
+    }
+}
+
+tasks.register('printEnvironment') {
+    doLast {
+        println "CLion platform : ${clionRoot}"
+        println "javac          : ${forkedJavac ?: '(gradle default)'} (major ${bestMajor})"
+    }
+}
