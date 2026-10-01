@@ -54,6 +54,14 @@ open as plain text. After `MyEbus.` it offers `Broadcast`, `Event` and `Queue`; 
 `MyEbus.Event.` it offers the EBus event names. Class names, EBus names and globals are offered
 when no receiver is typed.
 
+### Editor log
+
+The **Editor Log** tab tails the running Editor's log file (`<project>/user/log/Editor.log`)
+and streams new lines with error/warning colouring. **Clear** empties the tab (the file on disk
+is untouched), **Pause** freezes the tail, **Open Log File** opens it in the editor and
+**Reload** re-resolves the path. The log path is auto-detected from the open project; override
+it under **Settings | Tools | O3DE** if the project cannot be detected.
+
 ### Settings
 
 **Settings | Tools | O3DE**
@@ -67,6 +75,8 @@ when no receiver is typed.
 * **Read Lua API references** – listen for a running O3DE target and read the Lua API surface
   from it.
 * **Offer Lua code completion** – use those references for `.lua` completion.
+* **Editor log file** – path to the Editor log to tail; empty auto-detects it from the open
+  project.
 
 ## Building
 

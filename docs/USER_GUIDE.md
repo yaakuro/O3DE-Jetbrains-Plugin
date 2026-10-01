@@ -57,6 +57,9 @@ Open **Settings | Tools | O3DE**.
 | **Show the O3DE tool window when a command starts** | Activates the bottom-stripe tool window automatically. |
 | **Refresh the project after a command succeeds** | Triggers a VFS refresh when a command exits with code 0. |
 | **Ask before running commands that change files** | Confirmation dialog for create/register/enable operations. |
+| **Read Lua API references** | Listen for a running O3DE target and read its Lua API surface. |
+| **Offer Lua code completion** | Use those references for `.lua` code completion. |
+| **Editor log file** | Absolute path to the Editor log to tail. Leave empty to auto-detect `<project>/user/log/Editor.log`. |
 
 Press **Detect** to search for the script automatically. Detection order:
 
@@ -81,7 +84,7 @@ button.
 |---|---|
 | **Tools \| O3DE** | The complete menu (also shown as a popup at the bottom of the *Tools* menu). |
 | **Project view context menu \| O3DE** | The most-used subset, scoped to the folder you right-clicked. |
-| **O3DE tool window** (bottom stripe) | **Console** tab with the command output, **Registry** tab with the manifest contents and a **Lua API** tab with the Lua references read from a running target. |
+| **O3DE tool window** (bottom stripe) | **Console** tab with the command output, **Registry** tab with the manifest contents, a **Lua API** tab with the Lua references read from a running target and an **Editor Log** tab tailing the Editor log. |
 | **Settings \| Tools \| O3DE** | Configuration (see above). |
 | **Event log / balloon notifications** | Success, failure and "script not found" messages, tagged `O3DE`. |
 
@@ -284,6 +287,24 @@ The data is used by Lua code completion in `.lua` files:
 Completion needs no third-party Lua plugin and also fires while a `.lua` file is open as plain
 text.
 
+### Editor Log tab
+
+Streams the log file of a **running** Editor (or Game), `Editor.log`, with error/warning
+colouring. The file is auto-detected as `<project>/user/log/Editor.log`; override it under
+**Settings | Tools | O3DE** when the project cannot be detected.
+
+| Control | Effect |
+|---|---|
+| **Pause** / **Follow** | Freezes/resumes the tail. While paused the read position is held, so resuming shows the lines written meanwhile. |
+| **Clear** | Clears the lines shown in this tab only — the log file on disk is not modified. |
+| **Open Log File** | Opens the log file in the editor. |
+| **Reload** | Re-resolves the log path and starts again from near the end of the file. |
+| Status label | Shows `[tailing]`, `[paused]` or `[stopped]` and the resolved log path. |
+
+Because the engine keeps the log file open and does not flush after every line, a line can take
+a moment to appear. The tab starts at the last ~200 KB of an existing file so opening it does
+not dump a multi‑megabyte log.
+
 ---
 
 ## 8. Behaviour worth knowing
@@ -319,6 +340,8 @@ text.
 | Lua API tab stays on *Waiting for an O3DE Editor or Game on port 6777...* | No RemoteTools target is running, or it is a release build (RemoteTools is compiled out of `_RELEASE`). Start a debug/profile Editor or Game. |
 | *Address already in use* / listener error in the Lua API tab | Another RemoteTools host owns port 6777 — most likely the standalone O3DE Lua Editor. Close it and press **Refresh**. |
 | Lua completion shows nothing | The tab has no data yet (press **Refresh** with a target running), or **Offer Lua code completion** is off in settings. |
+| Editor Log tab says *No Editor log found* | The open project is not an O3DE project (no `project.json` found by walking up) — set **Editor log file** in settings. |
+| Editor Log lines appear late | The engine keeps the log open without flushing every line; this is normal and usually only a fraction of a second. |
 
 ---
 

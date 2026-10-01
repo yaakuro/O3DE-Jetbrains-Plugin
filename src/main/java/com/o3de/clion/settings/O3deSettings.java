@@ -40,6 +40,8 @@ public final class O3deSettings implements PersistentStateComponent<O3deSettings
         public boolean luaReferencesEnabled = true;
         /** Offer Lua code completion based on the references read from a connected target. */
         public boolean luaCompletionEnabled = true;
+        /** Absolute path to the O3DE Editor log file. Empty means auto-detect from the open project. */
+        public String logFilePath = "";
     }
 
     private State state = new State();
@@ -90,6 +92,10 @@ public final class O3deSettings implements PersistentStateComponent<O3deSettings
         return state.luaCompletionEnabled;
     }
 
+    public @Nullable String getConfiguredLogFilePath() {
+        return emptyToNull(state.logFilePath);
+    }
+
     public void setScriptPath(@Nullable String path) {
         state.scriptPath = nullToEmpty(path);
     }
@@ -120,6 +126,10 @@ public final class O3deSettings implements PersistentStateComponent<O3deSettings
 
     public void setLuaCompletionEnabled(boolean value) {
         state.luaCompletionEnabled = value;
+    }
+
+    public void setLogFilePath(@Nullable String path) {
+        state.logFilePath = nullToEmpty(path);
     }
 
     private static @Nullable String emptyToNull(@Nullable String value) {

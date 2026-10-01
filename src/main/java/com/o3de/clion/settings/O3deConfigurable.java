@@ -42,6 +42,7 @@ public final class O3deConfigurable implements Configurable {
     private JBCheckBox confirmWriteCommands;
     private JBCheckBox luaReferencesEnabled;
     private JBCheckBox luaCompletionEnabled;
+    private PathField logFileField;
     private JBLabel detectedLabel;
 
     @Override
@@ -60,6 +61,7 @@ public final class O3deConfigurable implements Configurable {
         luaReferencesEnabled = new JBCheckBox(
                 "Read Lua API references (Classes, EBuses, Globals) from a running O3DE target");
         luaCompletionEnabled = new JBCheckBox("Offer Lua code completion from those references");
+        logFileField = new PathField(null, PathField.Mode.FILE, "Select the O3DE Editor log file");
         detectedLabel = new JBLabel(" ");
         detectedLabel.setIcon(O3deIcons.ToolWindow);
 
@@ -81,6 +83,7 @@ public final class O3deConfigurable implements Configurable {
                 .addComponent(confirmWriteCommands)
                 .addComponent(luaReferencesEnabled)
                 .addComponent(luaCompletionEnabled)
+                .addLabeledComponent("Editor log file:", logFileField)
                 .getPanel();
         panel.setBorder(JBUI.Borders.empty(8));
 
@@ -114,7 +117,8 @@ public final class O3deConfigurable implements Configurable {
                 || refreshAfterSuccess.isSelected() != settings.isRefreshAfterSuccess()
                 || confirmWriteCommands.isSelected() != settings.isConfirmWriteCommands()
                 || luaReferencesEnabled.isSelected() != settings.isLuaReferencesEnabled()
-                || luaCompletionEnabled.isSelected() != settings.isLuaCompletionEnabled();
+                || luaCompletionEnabled.isSelected() != settings.isLuaCompletionEnabled()
+                || !Objects.equals(logFileField.getText(), nullToEmpty(settings.getConfiguredLogFilePath()));
     }
 
     @Override
@@ -127,6 +131,7 @@ public final class O3deConfigurable implements Configurable {
         settings.setConfirmWriteCommands(confirmWriteCommands.isSelected());
         settings.setLuaReferencesEnabled(luaReferencesEnabled.isSelected());
         settings.setLuaCompletionEnabled(luaCompletionEnabled.isSelected());
+        settings.setLogFilePath(logFileField.getText());
         detectedLabel.setText("Using " + O3deCliLocator.describe());
     }
 
@@ -140,6 +145,7 @@ public final class O3deConfigurable implements Configurable {
         confirmWriteCommands.setSelected(settings.isConfirmWriteCommands());
         luaReferencesEnabled.setSelected(settings.isLuaReferencesEnabled());
         luaCompletionEnabled.setSelected(settings.isLuaCompletionEnabled());
+        logFileField.setText(nullToEmpty(settings.getConfiguredLogFilePath()));
         detectedLabel.setText("Using " + O3deCliLocator.describe());
     }
 
@@ -154,6 +160,7 @@ public final class O3deConfigurable implements Configurable {
         confirmWriteCommands = null;
         luaReferencesEnabled = null;
         luaCompletionEnabled = null;
+        logFileField = null;
         detectedLabel = null;
     }
 

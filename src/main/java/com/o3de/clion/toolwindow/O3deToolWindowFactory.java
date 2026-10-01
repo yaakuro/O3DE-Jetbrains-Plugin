@@ -50,6 +50,12 @@ public final class O3deToolWindowFactory implements ToolWindowFactory, DumbAware
         lua.setDisposer(luaPanel);
         toolWindow.getContentManager().addContent(lua);
 
+        O3deLogPanel logPanel = new O3deLogPanel(project);
+        Content log = contents.createContent(logPanel, "Editor Log", false);
+        log.setCloseable(false);
+        log.setDisposer(logPanel);
+        toolWindow.getContentManager().addContent(log);
+
         toolWindow.setTitleActions(List.of(
                 new ClearAction(project),
                 new StopAction(project),
